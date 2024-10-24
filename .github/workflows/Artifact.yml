@@ -1,0 +1,19 @@
+name: Artifact
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: generate
+        run: |
+          date > build_date.txt
+
+      - name: download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build_date.txt
