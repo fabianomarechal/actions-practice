@@ -1,0 +1,9 @@
+name: NotifyDeployment
+on: deployment
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: date
