@@ -48,7 +48,7 @@ jobs:
       - name: Calcular nova versão e branch
         id: bump_version
         run: |
-          tag="${{ steps.find_tag.outputs.latest_tag }}"
+          tag="${{ steps.find_tag.outputs.latest_version }}"
           increment_type="${{ github.event.inputs.increment_type }}"
           
           echo "🔨 Gerando nova versão a partir de tag: $tag"
