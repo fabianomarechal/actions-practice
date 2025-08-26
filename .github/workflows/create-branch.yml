@@ -13,11 +13,6 @@ on:
           - minor
           - patch
           - alpha
-      base_branch:
-        description: "Branch base para criar o release"
-        required: true
-        default: main
-        type: string
 
 jobs:
   create-release-branch:
@@ -39,7 +34,6 @@ jobs:
       - name: Encontrar a última versão
         id: find_last_version
         run: |
-          # Lista todas as branches e tags de release do repositório remoto
           all_versions=$(git ls-remote --refs --sort='v:refname' origin 'refs/tags/release/*' 'refs/heads/release/*' | awk -F'/' '{print $NF}' | tr '\n' ' ')
 
           highest_version=$(echo "$all_versions" | tr ' ' '\n' | sort -V | tail -n1)
@@ -60,7 +54,6 @@ jobs:
           echo "🔨 Gerando nova versão a partir de tag: $version"
           echo "➡️  Tipo de incremento: $increment_type"
 
-          # Separa a versão principal do sufixo (se existir)
           base_version=$(echo "$version" | cut -d'-' -f1)
           alpha_number=$(echo "$version" | cut -s -d'-' -f2 | sed 's/a//')
           
@@ -113,13 +106,8 @@ jobs:
       - name: Criar e push da branch
         run: |
           NEW_BRANCH="${{ steps.bump_version.outputs.new_branch }}"
-          BASE_BRANCH="${{ github.event.inputs.base_branch }}"
+          BASE_BRANCH="${{ github.ref_name }}"
           
-          if git ls-remote --exit-code --heads origin "$BASE_BRANCH"; then
-            echo "❌ Erro: A branch base '$BASE_BRANCH' não existe no repositório remoto."
-            exit 1
-          fi
-
           if git ls-remote --exit-code --heads origin "$NEW_BRANCH"; then
             echo "❌ Erro: A branch de release '$NEW_BRANCH' já existe. Por favor, incremente a versão ou remova a branch existente."
             exit 1
