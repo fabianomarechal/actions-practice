@@ -1,4 +1,52 @@
-- name: Calcular nova versão e branch
+name: "Criar Branch de Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: "Tipo de incremento de versão (major, minor, patch)"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+      base_branch:
+        description: "Branch base para criar o release"
+        required: true
+        default: main
+        type: string
+
+jobs:
+  create-release-branch:
+    name: Criar Release Branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # para obter todas as tags
+
+      - name: Configurar usuário Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Encontrar última tag de release
+        id: find_tag
+        run: |
+          latest=$(git tag --list 'release/*' --sort=-v:refname | head -n1)
+          if [ -z "$latest" ]; then
+            echo "latest_tag=release/0.0.0" >> $GITHUB_OUTPUT
+          else
+            echo "latest_tag=$latest" >> $GITHUB_OUTPUT
+          fi
+          echo "🔖 Última tag encontrada: $latest"
+
+      - name: Calcular nova versão e branch
         id: bump_version
         run: |
           tag="${{ steps.find_tag.outputs.latest_tag }}"
@@ -29,3 +77,12 @@
           
           echo "new_version=$new_ver" >> $GITHUB_OUTPUT
           echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
+
+      - name: Criar e push da branch
+        run: |
+          git fetch origin ${{ github.event.inputs.base_branch }}
+          git checkout -b "${{ steps.bump_version.outputs.new_branch }}" origin/${{ github.event.inputs.base_branch }}
+          git push -u origin "${{ steps.bump_version.outputs.new_branch }}"
+
+      - name: Informar resultado
+        run: echo "Branch '${{ steps.bump_version.outputs.new_branch }}' criada com sucesso!"
