@@ -58,23 +58,14 @@ jobs:
           version=$(echo "$tag" | sed 's/release\///')
           
           # Extrai as partes da versão e garante que são números inteiros
-          # Verificação de valor vazio antes da atribuição
-          major_str=$(echo "$version" | cut -d'.' -f1)
-          if [ -z "$major_str" ]; then major_str=0; fi
+          declare -i major minor patch
           
-          minor_str=$(echo "$version" | cut -d'.' -f2)
-          if [ -z "$minor_str" ]; then minor_str=0; fi
+          major=$(printf "%.0f" $(echo "$version" | cut -d'.' -f1))
+          minor=$(printf "%.0f" $(echo "$version" | cut -d'.' -f2))
+          patch=$(printf "%.0f" $(echo "$version" | cut -d'.' -f3))
           
-          patch_str=$(echo "$version" | cut -d'.' -f3)
-          if [ -z "$patch_str" ]; then patch_str=0; fi
-          
-          # Declara as variáveis como inteiros
-          declare -i major="$major_str"
-          declare -i minor="$minor_str"
-          declare -i patch="$patch_str"
-
           echo "🔍 Versão atual (major.minor.patch): $major.$minor.$patch"
-
+          
           case "$increment_type" in
             major)
               echo "🚀 Incrementando a versão MAJOR."
