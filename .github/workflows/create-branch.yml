@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       increment_type:
-        description: "Tipo de incremento de versão (major, minor, patch)"
+        description: "Tipo de incremento de versão (major, minor, patch, alpha)"
         required: true
         default: patch
         type: choice
@@ -12,6 +12,12 @@ on:
           - major
           - minor
           - patch
+          - alpha
+      base_branch:
+        description: "Branch base para criar o release"
+        required: true
+        default: main
+        type: string
 
 jobs:
   create-release-branch:
@@ -44,46 +50,60 @@ jobs:
 
           echo "latest_version=$highest_version" >> $GITHUB_OUTPUT
           echo "🔖 Última versão semântica encontrada: $highest_version"
-          
+
       - name: Calcular nova versão e branch
         id: bump_version
         run: |
-          tag="${{ steps.find_last_version.outputs.latest_version }}"
+          version="${{ steps.find_last_version.outputs.latest_version }}"
           increment_type="${{ github.event.inputs.increment_type }}"
           
-          echo "🔨 Gerando nova versão a partir de tag: $tag"
+          echo "🔨 Gerando nova versão a partir de tag: $version"
           echo "➡️  Tipo de incremento: $increment_type"
-          
-          version=$(echo "$tag" | sed 's/release\///')
+
+          # Separa a versão principal do sufixo (se existir)
+          base_version=$(echo "$version" | cut -d'-' -f1)
+          alpha_number=$(echo "$version" | cut -s -d'-' -f2 | sed 's/a//')
           
           declare -i major minor patch
           
-          major=$(echo "$version" | cut -d'.' -f1)
+          major=$(echo "$base_version" | cut -d'.' -f1)
           if ! [[ "$major" =~ ^[0-9]+$ ]]; then major=0; fi
           
-          minor=$(echo "$version" | cut -d'.' -f2)
+          minor=$(echo "$base_version" | cut -d'.' -f2)
           if ! [[ "$minor" =~ ^[0-9]+$ ]]; then minor=0; fi
           
-          patch=$(echo "$version" | cut -d'.' -f3)
+          patch=$(echo "$base_version" | cut -d'.' -f3)
           if ! [[ "$patch" =~ ^[0-9]+$ ]]; then patch=0; fi
           
-          echo "🔍 Versão atual (major.minor.patch): $major.$minor.$patch"
+          echo "🔍 Versão base (major.minor.patch): $major.$minor.$patch"
+          
+          new_ver=""
           
           case "$increment_type" in
             major)
               echo "🚀 Incrementando a versão MAJOR."
-              major=$((major + 1)); minor=0; patch=0 ;;
+              major=$((major + 1)); minor=0; patch=0
+              new_ver="$major.$minor.$patch" ;;
             minor)
               echo "✨ Incrementando a versão MINOR."
-              minor=$((minor + 1)); patch=0 ;;
+              minor=$((minor + 1)); patch=0
+              new_ver="$major.$minor.$patch" ;;
             patch)
               echo "🩹 Incrementando a versão PATCH."
-              patch=$((patch + 1)) ;;
+              patch=$((patch + 1))
+              new_ver="$major.$minor.$patch" ;;
+            alpha)
+              echo "🧪 Criando/Incrementando a versão ALPHA."
+              if [ -z "$alpha_number" ]; then
+                alpha_number=1
+              else
+                alpha_number=$((alpha_number + 1))
+              fi
+              new_ver="$base_version-a$alpha_number" ;;
             *)
               echo "❗ Incremento inválido: $increment_type"; exit 1 ;;
           esac
           
-          new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
           
           echo "✅ Nova versão calculada: $new_ver"
@@ -93,8 +113,13 @@ jobs:
       - name: Criar e push da branch
         run: |
           NEW_BRANCH="${{ steps.bump_version.outputs.new_branch }}"
-          BASE_BRANCH="${{ github.ref_name }}"
+          BASE_BRANCH="${{ github.event.inputs.base_branch }}"
           
+          if git ls-remote --exit-code --heads origin "$BASE_BRANCH"; then
+            echo "❌ Erro: A branch base '$BASE_BRANCH' não existe no repositório remoto."
+            exit 1
+          fi
+
           if git ls-remote --exit-code --heads origin "$NEW_BRANCH"; then
             echo "❌ Erro: A branch de release '$NEW_BRANCH' já existe. Por favor, incremente a versão ou remova a branch existente."
             exit 1
