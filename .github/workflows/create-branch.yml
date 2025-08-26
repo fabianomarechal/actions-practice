@@ -1,60 +1,18 @@
-name: "Criar Branch de Release"
-
-on:
-  workflow_dispatch:
-    inputs:
-      increment_type:
-        description: "Tipo de incremento de versão (major, minor, patch)"
-        required: true
-        default: patch
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
-      base_branch:
-        description: "Branch base para criar o release"
-        required: true
-        default: main
-        type: string
-
-jobs:
-  create-release-branch:
-    name: Criar Release Branch
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # para obter todas as tags
-
-      - name: Configurar usuário Git
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-
-      - name: Encontrar última tag de release
-        id: find_tag
-        run: |
-          latest=$(git tag --list 'release/*' --sort=-v:refname | head -n1)
-          if [ -z "$latest" ]; then
-            echo "latest_tag=release/0.0.0" >> $GITHUB_OUTPUT
-          else
-            echo "latest_tag=$latest" >> $GITHUB_OUTPUT
-          fi
-          echo "🔖 Última tag encontrada: $latest"
-
-      - name: Calcular nova versão e branch
+- name: Calcular nova versão e branch
         id: bump_version
         run: |
           tag="${{ steps.find_tag.outputs.latest_tag }}"
-          echo "🔨 Gerando nova versão a partir de tag: $tag"
-          version="${tag#release/}"
-          IFS='.' read -r major minor patch <<< "$version"
           increment_type="${{ github.event.inputs.increment_type }}"
+          
+          echo "🔨 Gerando nova versão a partir de tag: $tag"
           echo "➡️  Tipo de incremento: $increment_type"
+          
+          version=$(echo "$tag" | sed 's/release\///')
+          
+          major=$(echo "$version" | cut -d'.' -f1)
+          minor=$(echo "$version" | cut -d'.' -f2)
+          patch=$(echo "$version" | cut -d'.' -f3)
+
           case "$increment_type" in
             major)
               ((major++)); minor=0; patch=0 ;;
@@ -65,22 +23,9 @@ jobs:
             *)
               echo "Incremento inválido: $increment_type"; exit 1 ;;
           esac
+          
           new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
-          # Passa variáveis de saída para o GitHub Actions
-          if [ -n "${GITHUB_OUTPUT:-}" ]; then
-            echo "new_version=$new_ver" >> "${GITHUB_OUTPUT}"
-            echo "new_branch=$new_branch" >> "${GITHUB_OUTPUT}"
-          else
-            echo "::set-output name=new_version::$new_ver"
-            echo "::set-output name=new_branch::$new_branch"
-          fi
-
-      - name: Criar e push da branch
-        run: |
-          git fetch origin ${{ github.event.inputs.base_branch }}
-          git checkout -b "${{ steps.bump_version.outputs.new_branch }}" origin/${{ github.event.inputs.base_branch }}
-          git push -u origin "${{ steps.bump_version.outputs.new_branch }}"
-
-      - name: Informar resultado
-        run: echo "Branch '${{ steps.bump_version.outputs.new_branch }}' criada com sucesso!"
+          
+          echo "new_version=$new_ver" >> $GITHUB_OUTPUT
+          echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
