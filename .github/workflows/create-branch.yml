@@ -57,10 +57,18 @@ jobs:
           
           version=$(echo "$tag" | sed 's/release\///')
           
+          # Extrai as partes da versão de forma segura, com valores padrão de 0
           major=$(echo "$version" | cut -d'.' -f1)
+          if [ -z "$major" ]; then major=0; fi
+          
           minor=$(echo "$version" | cut -d'.' -f2)
+          if [ -z "$minor" ]; then minor=0; fi
+          
           patch=$(echo "$version" | cut -d'.' -f3)
-
+          if [ -z "$patch" ]; then patch=0; fi
+          
+          echo "🔍 Versão atual (major.minor.patch): $major.$minor.$patch"
+      
           case "$increment_type" in
             major)
               ((major++)); minor=0; patch=0 ;;
