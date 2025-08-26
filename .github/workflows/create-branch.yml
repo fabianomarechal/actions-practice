@@ -48,6 +48,7 @@ jobs:
 
       - name: Calcular nova versão e branch
         id: bump_version
+        shell: bash
         run: |
           tag="${{ steps.find_tag.outputs.latest_tag }}"
           increment_type="${{ github.event.inputs.increment_type }}"
