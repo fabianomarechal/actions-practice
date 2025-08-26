@@ -30,30 +30,26 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
 
-      - name: Encontrar última tag ou branch de release
+      - name: Encontrar a última versão
         id: find_last_version
         run: |
-          latest_tag=$(git tag --list 'release/*' --sort=-v:refname | head -n1)
-          latest_branch=$(git for-each-ref --sort=-committerdate refs/heads/release/* --format='%(refname:short)' | head -n1)
-
-          latest_tag_version=$(echo "$latest_tag" | sed 's/release\///' | tr -d '\n')
-          latest_branch_version=$(echo "$latest_branch" | sed 's/release\///' | tr -d '\n')
+          # Lista todas as branches e tags de release e extrai a versão
+          latest_versions=$(git for-each-ref --format='%(refname)' refs/heads/release/* | sed 's/refs\/heads\/release\///' | tr '\n' ' ')
+          latest_versions+=" "
+          latest_versions+=$(git tag --list 'release/*' | sed 's/release\///' | tr '\n' ' ')
           
-          # Remove o prefixo "v" se existir
-          latest_tag_version=$(echo "$latest_tag_version" | sed 's/v//')
-          latest_branch_version=$(echo "$latest_branch_version" | sed 's/v//')
-
-          # Compara as versões semânticas para encontrar a mais alta
-          if [ -z "$latest_tag_version" ]; then latest_tag_version="0.0.0"; fi
-          if [ -z "$latest_branch_version" ]; then latest_branch_version="0.0.0"; fi
-
-          if [[ "$(printf '%s\n' "$latest_tag_version" "$latest_branch_version" | sort -V | tail -n1)" == "$latest_tag_version" ]]; then
-            echo "latest_version=$latest_tag_version" >> $GITHUB_OUTPUT
-            echo "🔖 Última versão encontrada (tag): $latest_tag_version"
-          else
-            echo "latest_version=$latest_branch_version" >> $GITHUB_OUTPUT
-            echo "🔖 Última versão encontrada (branch): $latest_branch_version"
+          # Remove prefixos como 'v' se existirem
+          latest_versions=$(echo "$latest_versions" | sed 's/v//g')
+          
+          # Encontra a versão mais alta usando sort -V (ordenamento de versão)
+          highest_version=$(echo "$latest_versions" | tr ' ' '\n' | sort -V | tail -n1)
+          
+          if [ -z "$highest_version" ]; then
+            highest_version="0.0.0"
           fi
+
+          echo "latest_version=$highest_version" >> $GITHUB_OUTPUT
+          echo "🔖 Última versão semântica encontrada: $highest_version"
 
       - name: Calcular nova versão e branch
         id: bump_version
