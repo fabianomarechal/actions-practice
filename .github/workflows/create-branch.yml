@@ -57,7 +57,6 @@ jobs:
           
           version=$(echo "$tag" | sed 's/release\///')
           
-          # Extrai as partes da versão e garante que são números inteiros
           declare -i major=$(echo "$version" | cut -d'.' -f1)
           declare -i minor=$(echo "$version" | cut -d'.' -f2)
           declare -i patch=$(echo "$version" | cut -d'.' -f3)
@@ -66,18 +65,22 @@ jobs:
 
           case "$increment_type" in
             major)
+              echo "🚀 Incrementando a versão MAJOR."
               ((major++)); minor=0; patch=0 ;;
             minor)
+              echo "✨ Incrementando a versão MINOR."
               ((minor++)); patch=0 ;;
             patch)
+              echo "🩹 Incrementando a versão PATCH."
               ((patch++)) ;;
             *)
-              echo "Incremento inválido: $increment_type"; exit 1 ;;
+              echo "❗ Incremento inválido: $increment_type"; exit 1 ;;
           esac
           
           new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
           
+          echo "✅ Nova versão calculada: $new_ver"
           echo "new_version=$new_ver" >> $GITHUB_OUTPUT
           echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
 
