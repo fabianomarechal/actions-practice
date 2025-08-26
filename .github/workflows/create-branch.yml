@@ -20,36 +20,37 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Lógica completa de criação da branch de release
-        id: release_logic
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # para obter todas as tags e histórico
+
+      - name: Configurar usuário Git
         run: |
-          set -e # Sai imediatamente se um comando falhar
-
-          BASE_BRANCH="${{ github.ref_name }}"
-
-          # Configurar usuário Git
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          
-          # Checkout para obter todas as tags e referências remotas
-          git fetch --all --tags --prune
-          
-          # Encontrar última tag de release
+
+      - name: Encontrar última tag de release
+        id: find_tag
+        run: |
           latest=$(git tag --list 'release/*' --sort=-v:refname | head -n1)
           if [ -z "$latest" ]; then
-            latest="release/0.0.0"
-            echo "🔖 Nenhuma tag de release encontrada. Iniciando com 'release/0.0.0'."
+            echo "latest_tag=release/0.0.0" >> $GITHUB_OUTPUT
           else
-            echo "🔖 Última tag encontrada: $latest"
+            echo "latest_tag=$latest" >> $GITHUB_OUTPUT
           fi
+          echo "🔖 Última tag encontrada: $latest"
 
-          # Calcular nova versão e branch
+      - name: Calcular nova versão e branch
+        id: bump_version
+        run: |
+          tag="${{ steps.find_tag.outputs.latest_tag }}"
           increment_type="${{ github.event.inputs.increment_type }}"
           
-          echo "🔨 Gerando nova versão a partir de tag: $latest"
+          echo "🔨 Gerando nova versão a partir de tag: $tag"
           echo "➡️  Tipo de incremento: $increment_type"
           
-          version=$(echo "$latest" | sed 's/release\///')
+          version=$(echo "$tag" | sed 's/release\///')
           
           declare -i major minor patch
           
@@ -81,15 +82,22 @@ jobs:
           new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
           
-          # Checar se a branch já existe e criar
-          if git ls-remote --exit-code --heads origin "$new_branch"; then
-            echo "❌ Erro: A branch de release '$new_branch' já existe. Por favor, incremente a versão ou remova a branch existente."
+          echo "✅ Nova versão calculada: $new_ver"
+          echo "new_version=$new_ver" >> $GITHUB_OUTPUT
+          echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
+
+      - name: Criar e push da branch
+        run: |
+          NEW_BRANCH="${{ steps.bump_version.outputs.new_branch }}"
+          BASE_BRANCH="${{ github.ref_name }}"
+          
+          if git ls-remote --exit-code --heads origin "$NEW_BRANCH"; then
+            echo "❌ Erro: A branch de release '$NEW_BRANCH' já existe. Por favor, incremente a versão ou remova a branch existente."
             exit 1
           fi
 
-          git checkout -b "$new_branch" "origin/$BASE_BRANCH"
-          echo "✅ Nova branch de release '$new_branch' criada localmente a partir de '$BASE_BRANCH'."
+          git checkout -b "$NEW_BRANCH" "origin/$BASE_BRANCH"
+          echo "✅ Nova branch de release '$NEW_BRANCH' criada localmente a partir de '$BASE_BRANCH'."
 
-          # Push da branch para o repositório
-          git push -u origin "$new_branch"
-          echo "🎉 Branch '$new_branch' enviada para o repositório remoto com sucesso!"
+          git push -u origin "$NEW_BRANCH"
+          echo "🎉 Branch '$NEW_BRANCH' enviada para o repositório remoto com sucesso!"
