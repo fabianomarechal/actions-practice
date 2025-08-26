@@ -75,13 +75,13 @@ jobs:
           case "$increment_type" in
             major)
               echo "🚀 Incrementando a versão MAJOR."
-              major=((major+1)); minor=0; patch=0 ;;
+              major=$((major+1)); minor=0; patch=0 ;;
             minor)
               echo "✨ Incrementando a versão MINOR."
-              minor=((minor + 1)); patch=0 ;;
+              minor=$((minor + 1)); patch=0 ;;
             patch)
               echo "🩹 Incrementando a versão PATCH."
-              patch=((patch+1)) ;;
+              patch=$((patch+1));;
             *)
               echo "❗ Incremento inválido: $increment_type"; exit 1 ;;
           esac
