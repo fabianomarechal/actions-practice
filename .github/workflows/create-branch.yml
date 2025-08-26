@@ -53,7 +53,9 @@ jobs:
           echo "🔨 Gerando nova versão a partir de tag: $tag"
           version="${tag#release/}"
           IFS='.' read -r major minor patch <<< "$version"
-          case "${{ github.event.inputs.increment_type }}" in
+          increment_type="${{ github.event.inputs.increment_type }}"
+          echo "➡️  Tipo de incremento: $increment_type"
+          case "$increment_type" in
             major)
               ((major++)); minor=0; patch=0 ;;
             minor)
@@ -61,10 +63,11 @@ jobs:
             patch)
               ((patch++)) ;;
             *)
-              echo "Incremento inválido"; exit 1 ;;
+              echo "Incremento inválido: $increment_type"; exit 1 ;;
           esac
           new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
+          # Passa variáveis de saída para o GitHub Actions
           echo "new_version=$new_ver" >> $GITHUB_OUTPUT
           echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
 
