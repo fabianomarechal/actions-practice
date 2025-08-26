@@ -60,9 +60,14 @@ jobs:
           # Extrai as partes da versão e garante que são números inteiros
           declare -i major minor patch
           
-          major=$(printf "%.0f" $(echo "$version" | cut -d'.' -f1))
-          minor=$(printf "%.0f" $(echo "$version" | cut -d'.' -f2))
-          patch=$(printf "%.0f" $(echo "$version" | cut -d'.' -f3))
+          major=$(echo "$version" | cut -d'.' -f1)
+          if ! [[ "$major" =~ ^[0-9]+$ ]]; then major=0; fi
+          
+          minor=$(echo "$version" | cut -d'.' -f2)
+          if ! [[ "$minor" =~ ^[0-9]+$ ]]; then minor=0; fi
+          
+          patch=$(echo "$version" | cut -d'.' -f3)
+          if ! [[ "$patch" =~ ^[0-9]+$ ]]; then patch=0; fi
           
           echo "🔍 Versão atual (major.minor.patch): $major.$minor.$patch"
           
