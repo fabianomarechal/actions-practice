@@ -33,24 +33,18 @@ jobs:
       - name: Encontrar a última versão
         id: find_last_version
         run: |
-          # Lista todas as branches e tags de release e extrai a versão
-          latest_versions=$(git for-each-ref --format='%(refname)' refs/heads/release/* | sed 's/refs\/heads\/release\///' | tr '\n' ' ')
-          latest_versions+=" "
-          latest_versions+=$(git tag --list 'release/*' | sed 's/release\///' | tr '\n' ' ')
-          
-          # Remove prefixos como 'v' se existirem
-          latest_versions=$(echo "$latest_versions" | sed 's/v//g')
-          
-          # Encontra a versão mais alta usando sort -V (ordenamento de versão)
-          highest_version=$(echo "$latest_versions" | tr ' ' '\n' | sort -V | tail -n1)
-          
+          # Lista todas as branches e tags de release do repositório remoto
+          all_versions=$(git ls-remote --refs --sort='v:refname' origin 'refs/tags/release/*' 'refs/heads/release/*' | awk -F'/' '{print $NF}' | tr '\n' ' ')
+
+          highest_version=$(echo "$all_versions" | tr ' ' '\n' | sort -V | tail -n1)
+
           if [ -z "$highest_version" ]; then
             highest_version="0.0.0"
           fi
 
           echo "latest_version=$highest_version" >> $GITHUB_OUTPUT
           echo "🔖 Última versão semântica encontrada: $highest_version"
-
+          
       - name: Calcular nova versão e branch
         id: bump_version
         run: |
