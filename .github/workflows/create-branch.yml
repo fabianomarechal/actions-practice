@@ -68,8 +68,13 @@ jobs:
           new_ver="$major.$minor.$patch"
           new_branch="release/$new_ver"
           # Passa variáveis de saída para o GitHub Actions
-          echo "new_version=$new_ver" >> $GITHUB_OUTPUT
-          echo "new_branch=$new_branch" >> $GITHUB_OUTPUT
+          if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            echo "new_version=$new_ver" >> "${GITHUB_OUTPUT}"
+            echo "new_branch=$new_branch" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::set-output name=new_version::$new_ver"
+            echo "::set-output name=new_branch::$new_branch"
+          fi
 
       - name: Criar e push da branch
         run: |
